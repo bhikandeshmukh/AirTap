@@ -47,7 +47,7 @@ class WebServer @Inject constructor(
 
     fun start(port: Int = 8080) {
         if (server != null) return
-        server = embeddedServer(Netty, port = port) { configureServer() }.start(wait = false)
+        server = embeddedServer(Netty, port = port, host = "0.0.0.0") { configureServer() }.start(wait = false)
     }
 
     fun stop() {

@@ -97,7 +97,7 @@ class AuthManager @Inject constructor(
     }
 
     var autoStartEnabled: Boolean
-        get() = prefs.getBoolean(KEY_AUTO_START, false)
+        get() = prefs.getBoolean(KEY_AUTO_START, true)
         set(value) = prefs.edit().putBoolean(KEY_AUTO_START, value).apply()
 
     var serverPort: Int
