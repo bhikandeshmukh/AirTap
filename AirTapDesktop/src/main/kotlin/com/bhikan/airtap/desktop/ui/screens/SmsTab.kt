@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmsTab(client: AirTapClient) {
     var conversations by remember { mutableStateOf<List<SmsConversation>>(emptyList()) }

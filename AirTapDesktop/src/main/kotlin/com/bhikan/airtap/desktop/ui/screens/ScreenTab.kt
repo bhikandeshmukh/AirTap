@@ -113,35 +113,42 @@ fun ScreenTab(client: AirTapClient) {
                 .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
-            frameBytes?.let { bytes ->
-                try {
-                    val image = Image.makeFromEncoded(bytes)
-                    Image(
-                        bitmap = image.toComposeImageBitmap(),
-                        contentDescription = "Phone Screen",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
-                } catch (_: Exception) {
-                    Icon(
-                        Icons.Default.BrokenImage,
-                        null,
-                        modifier = Modifier.size(64.dp),
-                        tint = Color.Gray
-                    )
+            val imageBitmap = remember(frameBytes) {
+                frameBytes?.let { bytes ->
+                    runCatching {
+                        Image.makeFromEncoded(bytes).toComposeImageBitmap()
+                    }.getOrNull()
                 }
-            } ?: Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            }
+            
+            if (imageBitmap != null) {
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = "Phone Screen",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+            } else if (frameBytes != null) {
                 Icon(
-                    Icons.Default.ScreenShare,
+                    Icons.Default.BrokenImage,
                     null,
                     modifier = Modifier.size(64.dp),
                     tint = Color.Gray
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Start screen mirroring from phone",
-                    color = Color.Gray
-                )
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.ScreenShare,
+                        null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Start screen mirroring from phone",
+                        color = Color.Gray
+                    )
+                }
             }
         }
 
