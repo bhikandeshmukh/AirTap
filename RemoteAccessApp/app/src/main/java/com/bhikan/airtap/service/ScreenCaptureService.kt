@@ -23,6 +23,7 @@ import android.os.Looper
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
+import androidx.core.os.BuildCompat
 import com.bhikan.airtap.R
 import com.bhikan.airtap.ui.MainActivity
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,7 +76,12 @@ class ScreenCaptureService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
-                val resultData = intent.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
+                val resultData = if (BuildCompat.isAtLeastT()) {
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA)
+                }
                 if (resultCode == Activity.RESULT_OK && resultData != null) {
                     startForeground(NOTIFICATION_ID, createNotification())
                     startCapture(resultCode, resultData)
@@ -91,7 +97,7 @@ class ScreenCaptureService : Service() {
         val metrics = DisplayMetrics()
         @Suppress("DEPRECATION")
         windowManager.defaultDisplay.getMetrics(metrics)
-        
+
         // Scale down for performance
         val scale = 0.5f
         screenWidth = (metrics.widthPixels * scale).toInt()

@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,7 +37,7 @@ fun SettingsScreen(
                 title = { Text("Settings") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -82,9 +83,9 @@ fun SettingsScreen(
                                 )
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(12.dp))
-                        
+
                         Text(
                             text = "Use this email on desktop app to connect",
                             style = MaterialTheme.typography.bodySmall,
@@ -92,12 +93,12 @@ fun SettingsScreen(
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 OutlinedTextField(
                     value = editDeviceName,
-                    onValueChange = { 
+                    onValueChange = {
                         editDeviceName = it
                         onDeviceNameChange(it)
                     },
@@ -114,7 +115,7 @@ fun SettingsScreen(
             SettingsSection(title = "Server Settings") {
                 OutlinedTextField(
                     value = portText,
-                    onValueChange = { 
+                    onValueChange = {
                         portText = it
                         it.toIntOrNull()?.let { port ->
                             if (port in 1024..65535) onPortChange(port)
@@ -147,7 +148,7 @@ fun SettingsScreen(
                     }
                     Switch(
                         checked = autoStart,
-                        onCheckedChange = { 
+                        onCheckedChange = {
                             autoStart = it
                             onAutoStartChange(it)
                         }
