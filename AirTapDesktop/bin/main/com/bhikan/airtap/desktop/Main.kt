@@ -71,23 +71,25 @@ fun App() {
             }
             
             Screen.DEVICE_LIST -> {
+                var connError by remember { mutableStateOf<String?>(null) }
                 DeviceListScreen(
                     onDeviceSelect = { ip, port ->
                         serverUrl = ip
-                        // Auto connect with superadmin email
-                        // Note: DeviceList currently assumes success, but we should handle it better ideally.
-                        // For now just keep existing flow but add error logging if needed
+                        connError = null // Clear previous error
                         client.connect(ip, com.bhikan.airtap.desktop.Config.SUPERADMIN_EMAIL) { result ->
                             result.onSuccess {
                                 token = it
                                 currentScreen = Screen.DASHBOARD
                             }
-                            // Only logging for now as DeviceList doesn't have error UI yet
+                            result.onFailure {
+                                connError = "Failed: ${it.message}"
+                            }
                         }
                     },
                     onBack = {
                         currentScreen = Screen.CONNECT
-                    }
+                    },
+                    connectionError = connError
                 )
             }
             

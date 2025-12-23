@@ -18,7 +18,7 @@ fun ConnectScreen(
     onConnect: (url: String, email: String, onResult: (Result<Unit>) -> Unit) -> Unit,
     onShowDeviceList: () -> Unit = {}
 ) {
-    var serverUrl by remember { mutableStateOf("http://192.168.1.") }
+    var serverUrl by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var isConnecting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }

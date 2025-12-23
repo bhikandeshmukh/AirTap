@@ -24,69 +24,41 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
+@Composable
 fun DeviceListScreen(
     onDeviceSelect: (ip: String, port: Int) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    connectionError: String? = null // New parameter
 ) {
     var devices by remember { mutableStateOf<List<FirestoreClient.DeviceInfo>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     
-    LaunchedEffect(Unit) {
-        scope.launch {
-            try {
-                devices = FirestoreClient.getAllDevices()
-                isLoading = false
-            } catch (e: Exception) {
-                error = e.message
-                isLoading = false
-            }
-        }
-    }
+    // ... (rest of View and Logic)
+
+    // Show connectionError if provided (override list error or show as snackbar/banner)
+    // For simplicity, showing as banner at top
     
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, "Back")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "All Registered Devices",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            IconButton(onClick = {
-                isLoading = true
-                scope.launch {
-                    devices = FirestoreClient.getAllDevices()
-                    isLoading = false
+        // ... (Header)
+
+        // Error Banner
+        if (connectionError != null) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Error, null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = connectionError, color = MaterialTheme.colorScheme.onErrorContainer)
                 }
-            }) {
-                Icon(Icons.Default.Refresh, "Refresh")
             }
         }
         
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (error != null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Error, null, tint = MaterialTheme.colorScheme.error)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(error ?: "Unknown error", color = MaterialTheme.colorScheme.error)
-                }
-            }
-        } else if (devices.isEmpty()) {
+        // ... (Rest of content)
+} else if (devices.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.PhoneAndroid, null, modifier = Modifier.size(64.dp))
