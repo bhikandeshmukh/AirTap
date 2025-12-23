@@ -19,7 +19,7 @@ class AuthManager @Inject constructor(
         private const val KEY_USER_EMAIL = "user_email"
         private const val KEY_DEVICE_ID = "device_id"
         private const val SESSION_TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000L // 30 days
-        const val SUPERADMIN_EMAIL = "thebhikandeshmukh@gmail.com"
+        // SUPERADMIN_EMAIL is now in BuildConfig
     }
 
     data class SessionInfo(
@@ -45,7 +45,7 @@ class AuthManager @Inject constructor(
         val inputEmail = email.lowercase().trim()
         
         // Superadmin can access any device
-        if (inputEmail == SUPERADMIN_EMAIL.lowercase()) {
+        if (inputEmail == com.bhikan.airtap.BuildConfig.SUPERADMIN_EMAIL.lowercase()) {
             return true
         }
         
@@ -56,7 +56,7 @@ class AuthManager @Inject constructor(
     
     // Check if email is superadmin
     fun isSuperAdmin(email: String): Boolean {
-        return email.lowercase().trim() == SUPERADMIN_EMAIL.lowercase()
+        return email.lowercase().trim() == com.bhikan.airtap.BuildConfig.SUPERADMIN_EMAIL.lowercase()
     }
 
     fun createSession(ipAddress: String, deviceId: String? = null): String {

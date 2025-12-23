@@ -43,6 +43,11 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    defaultConfig {
+        buildConfigField("String", "SUPERADMIN_EMAIL", "\"thebhikandeshmukh@gmail.com\"")
     }
 
     packaging {

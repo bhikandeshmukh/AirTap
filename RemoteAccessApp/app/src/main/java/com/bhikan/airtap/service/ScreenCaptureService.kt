@@ -76,7 +76,7 @@ class ScreenCaptureService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
-                val resultData = if (BuildCompat.isAtLeastT()) {
+                val resultData = if (Build.VERSION.SDK_INT >= 33) {
                     intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
                 } else {
                     @Suppress("DEPRECATION")
