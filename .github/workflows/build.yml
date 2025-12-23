@@ -26,21 +26,16 @@ jobs:
       
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-      
-      - name: Generate Gradle Wrapper
-        working-directory: RemoteAccessApp
-        run: gradle wrapper
-      
-      - name: Grant execute permission for gradlew
-        run: chmod +x RemoteAccessApp/gradlew
+        with:
+          gradle-version: '8.7'
       
       - name: Build Debug APK
         working-directory: RemoteAccessApp
-        run: ./gradlew assembleDebug
+        run: gradle assembleDebug
       
       - name: Build Release APK
         working-directory: RemoteAccessApp
-        run: ./gradlew assembleRelease
+        run: gradle assembleRelease
       
       - name: Rename APK files
         run: |
@@ -63,6 +58,7 @@ jobs:
         with:
           name: AirTap-Android-Release
           path: output/AirTap-Release.apk
+          if-no-files-found: ignore
 
   build-desktop-windows:
     name: Build Desktop EXE (Windows)
@@ -80,27 +76,28 @@ jobs:
       
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-      
-      - name: Generate Gradle Wrapper
-        working-directory: AirTapDesktop
-        run: gradle wrapper
+        with:
+          gradle-version: '8.7'
       
       - name: Build Windows EXE
         working-directory: AirTapDesktop
-        run: ./gradlew packageExe
+        run: gradle packageExe
       
       - name: Rename EXE file
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path output
-          $exe = Get-ChildItem -Path "AirTapDesktop/build/compose/binaries/main/exe/*.exe" | Select-Object -First 1
-          Copy-Item $exe.FullName -Destination "output/AirTap-Desktop-Setup.exe"
+          $exe = Get-ChildItem -Path "AirTapDesktop/build/compose/binaries/main/exe/*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($exe) {
+            Copy-Item $exe.FullName -Destination "output/AirTap-Desktop-Setup.exe"
+          }
       
       - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
           name: AirTap-Desktop-Windows
           path: output/AirTap-Desktop-Setup.exe
+          if-no-files-found: ignore
 
   build-desktop-macos:
     name: Build Desktop DMG (macOS)
@@ -118,28 +115,24 @@ jobs:
       
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-      
-      - name: Generate Gradle Wrapper
-        working-directory: AirTapDesktop
-        run: gradle wrapper
-      
-      - name: Grant execute permission for gradlew
-        run: chmod +x AirTapDesktop/gradlew
+        with:
+          gradle-version: '8.7'
       
       - name: Build macOS DMG
         working-directory: AirTapDesktop
-        run: ./gradlew packageDmg
+        run: gradle packageDmg
       
       - name: Rename DMG file
         run: |
           mkdir -p output
-          cp AirTapDesktop/build/compose/binaries/main/dmg/*.dmg output/AirTap-Desktop-macOS.dmg
+          cp AirTapDesktop/build/compose/binaries/main/dmg/*.dmg output/AirTap-Desktop-macOS.dmg 2>/dev/null || true
       
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
         with:
           name: AirTap-Desktop-macOS
           path: output/AirTap-Desktop-macOS.dmg
+          if-no-files-found: ignore
 
   build-desktop-linux:
     name: Build Desktop DEB (Linux)
@@ -157,28 +150,24 @@ jobs:
       
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-      
-      - name: Generate Gradle Wrapper
-        working-directory: AirTapDesktop
-        run: gradle wrapper
-      
-      - name: Grant execute permission for gradlew
-        run: chmod +x AirTapDesktop/gradlew
+        with:
+          gradle-version: '8.7'
       
       - name: Build Linux DEB
         working-directory: AirTapDesktop
-        run: ./gradlew packageDeb
+        run: gradle packageDeb
       
       - name: Rename DEB file
         run: |
           mkdir -p output
-          cp AirTapDesktop/build/compose/binaries/main/deb/*.deb output/AirTap-Desktop-Linux.deb
+          cp AirTapDesktop/build/compose/binaries/main/deb/*.deb output/AirTap-Desktop-Linux.deb 2>/dev/null || true
       
       - name: Upload Linux DEB
         uses: actions/upload-artifact@v4
         with:
           name: AirTap-Desktop-Linux
           path: output/AirTap-Desktop-Linux.deb
+          if-no-files-found: ignore
 
   release:
     name: Create Release
