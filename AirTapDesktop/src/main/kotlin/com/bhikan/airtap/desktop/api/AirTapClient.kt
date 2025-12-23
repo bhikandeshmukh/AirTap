@@ -36,7 +36,14 @@ class AirTapClient {
     enum class ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
     fun connect(url: String, email: String, callback: (Result<String>) -> Unit) {
-        baseUrl = url.trimEnd('/')
+        // Ensure URL has scheme
+        val cleanUrl = url.trimEnd('/')
+        baseUrl = if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+            "http://$cleanUrl"
+        } else {
+            cleanUrl
+        }
+        
         _connectionState.value = ConnectionState.CONNECTING
         
         scope.launch {

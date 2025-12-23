@@ -50,13 +50,17 @@ fun App() {
         when (currentScreen) {
             Screen.CONNECT -> {
                 ConnectScreen(
-                    onConnect = { url, email ->
+                    onConnect = { url, email, onResult ->
                         serverUrl = url
                         currentEmail = email
                         client.connect(url, email) { result ->
                             result.onSuccess { 
                                 token = it
                                 currentScreen = Screen.DASHBOARD
+                                onResult(Result.success(Unit))
+                            }
+                            result.onFailure {
+                                onResult(Result.failure(it))
                             }
                         }
                     },
@@ -71,11 +75,14 @@ fun App() {
                     onDeviceSelect = { ip, port ->
                         serverUrl = ip
                         // Auto connect with superadmin email
+                        // Note: DeviceList currently assumes success, but we should handle it better ideally.
+                        // For now just keep existing flow but add error logging if needed
                         client.connect(ip, com.bhikan.airtap.desktop.Config.SUPERADMIN_EMAIL) { result ->
                             result.onSuccess {
                                 token = it
                                 currentScreen = Screen.DASHBOARD
                             }
+                            // Only logging for now as DeviceList doesn't have error UI yet
                         }
                     },
                     onBack = {
