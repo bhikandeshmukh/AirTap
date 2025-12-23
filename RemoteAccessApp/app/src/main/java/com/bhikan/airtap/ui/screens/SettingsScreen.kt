@@ -208,5 +208,7 @@ private fun SettingsSection(
         color = MaterialTheme.colorScheme.primary
     )
     Spacer(modifier = Modifier.height(12.dp))
-    content()
+    Column {
+        content()
+    }
 }
