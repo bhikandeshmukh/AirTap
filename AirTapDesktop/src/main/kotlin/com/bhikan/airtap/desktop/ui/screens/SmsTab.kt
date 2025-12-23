@@ -21,7 +21,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmsTab(client: AirTapClient) {
     var conversations by remember { mutableStateOf<List<SmsConversation>>(emptyList()) }
@@ -189,7 +188,17 @@ private fun ConversationItem(
             
             if (conversation.unreadCount > 0) {
                 Spacer(modifier = Modifier.width(8.dp))
-                Badge { Text(conversation.unreadCount.toString()) }
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.error
+                ) {
+                    Text(
+                        text = conversation.unreadCount.toString(),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.onError,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
     }
