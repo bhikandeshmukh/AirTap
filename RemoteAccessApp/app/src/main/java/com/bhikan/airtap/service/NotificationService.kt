@@ -56,7 +56,7 @@ class NotificationService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        val item = sbn.toNotificationItem()
+        val item = convertToNotificationItem(sbn)
         if (item != null) {
             _newNotification.value = item
             refreshNotifications()
@@ -73,24 +73,25 @@ class NotificationService : NotificationListenerService() {
 
     fun refreshNotifications() {
         try {
-            val activeNotifications = activeNotifications
-                ?.mapNotNull { it.toNotificationItem() }
+            val notifications = activeNotifications
+            val activeList = notifications
+                ?.mapNotNull { sbn -> convertToNotificationItem(sbn) }
                 ?.sortedByDescending { it.timestamp }
                 ?: emptyList()
 
-            _notifications.value = activeNotifications
+            _notifications.value = activeList
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    fun getActiveNotifications(): List<NotificationItem> {
+    fun getNotificationsList(): List<NotificationItem> {
         return _notifications.value
     }
 
-    private fun StatusBarNotification.toNotificationItem(): NotificationItem? {
+    private fun convertToNotificationItem(sbn: StatusBarNotification): NotificationItem? {
         return try {
-            val notification = this.notification
+            val notification = sbn.notification
             val extras = notification.extras
 
             val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
@@ -106,30 +107,30 @@ class NotificationService : NotificationListenerService() {
                 "com.android.systemui",
                 "com.bhikan.airtap" // Skip our own notifications
             )
-            if (packageName in skipPackages) return null
+            if (sbn.packageName in skipPackages) return null
 
             val appName = try {
-                val appInfo = packageManager.getApplicationInfo(packageName, 0)
+                val appInfo = packageManager.getApplicationInfo(sbn.packageName, 0)
                 packageManager.getApplicationLabel(appInfo).toString()
             } catch (e: PackageManager.NameNotFoundException) {
-                packageName
+                sbn.packageName
             }
 
             val iconBase64 = try {
-                getAppIcon(packageName)?.let { encodeIconToBase64(it) }
+                getAppIcon(sbn.packageName)?.let { encodeIconToBase64(it) }
             } catch (e: Exception) {
                 null
             }
 
             NotificationItem(
-                id = key,
-                packageName = packageName,
+                id = sbn.key,
+                packageName = sbn.packageName,
                 appName = appName,
                 title = title,
                 text = text,
-                timestamp = postTime,
+                timestamp = sbn.postTime,
                 isOngoing = notification.flags and Notification.FLAG_ONGOING_EVENT != 0,
-                isClearable = isClearable,
+                isClearable = sbn.isClearable,
                 iconBase64 = iconBase64
             )
         } catch (e: Exception) {

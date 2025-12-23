@@ -6,11 +6,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.KeyPairGenerator
 import java.security.KeyStore
-import java.security.cert.X509Certificate
 import java.util.*
-import javax.security.auth.x500.X500Principal
-import org.bouncycastle.x509.X509V3CertificateGenerator
-import java.math.BigInteger
 
 /**
  * Helper class for SSL/TLS certificate management.

@@ -1,6 +1,7 @@
 package com.bhikan.airtap.di
 
 import android.content.Context
+import com.bhikan.airtap.data.repository.DeviceRepository
 import com.bhikan.airtap.data.repository.FileRepository
 import com.bhikan.airtap.data.repository.FileRepositoryImpl
 import com.bhikan.airtap.data.repository.SmsRepository
@@ -37,7 +38,12 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideDeviceRepository(): DeviceRepository = DeviceRepository()
+
+    @Provides
+    @Singleton
     fun provideUserRepository(
-        @ApplicationContext context: Context
-    ): UserRepository = UserRepository(context)
+        @ApplicationContext context: Context,
+        deviceRepository: DeviceRepository
+    ): UserRepository = UserRepository(context, deviceRepository)
 }

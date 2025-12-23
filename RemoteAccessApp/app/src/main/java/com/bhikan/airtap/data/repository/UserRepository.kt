@@ -13,7 +13,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class UserRepository @Inject constructor(
+class UserRepository(
     private val context: Context,
     private val deviceRepository: DeviceRepository
 ) {

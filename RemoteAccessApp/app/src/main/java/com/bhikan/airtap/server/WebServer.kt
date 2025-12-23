@@ -99,12 +99,12 @@ class WebServer @Inject constructor(
             val params = call.receiveParameters()
             val email = params["email"]?.lowercase()?.trim() ?: ""
             val deviceId = params["deviceId"] ?: java.util.UUID.randomUUID().toString()
-            val deviceName = params["deviceName"] ?: "Desktop"
             
             // Check if superadmin OR email matches registered email
             if (authManager.validateEmail(email)) {
                 // Email matches or is superadmin - create session
-                val token = authManager.createSession(call.request.origin.remoteHost, deviceId)
+                val clientIp = call.request.local.localHost
+                val token = authManager.createSession(clientIp, deviceId)
                 val isSuperAdmin = authManager.isSuperAdmin(email)
                 call.respond(mapOf(
                     "token" to token,
@@ -142,7 +142,7 @@ class WebServer @Inject constructor(
     private fun Routing.notificationRoutes() {
         route("/api/notifications") {
             get {
-                val notifications = NotificationService.getInstance()?.getActiveNotifications() ?: emptyList()
+                val notifications = NotificationService.getInstance()?.getNotificationsList() ?: emptyList()
                 call.respond(NotificationListResponse(notifications, notifications.size))
             }
             post("/dismiss") {

@@ -9,7 +9,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class DeviceRepository @Inject constructor() {
+class DeviceRepository {
     
     private val firestore = FirebaseFirestore.getInstance()
     private val devicesCollection = firestore.collection("devices")
