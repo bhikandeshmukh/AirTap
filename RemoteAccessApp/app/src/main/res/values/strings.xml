@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AirTap</string>
+    <string name="accessibility_service_description">AirTap uses this service to enable remote control features. This allows you to control your phone from a web browser by simulating taps, swipes, and button presses.</string>
+</resources>

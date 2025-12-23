@@ -1,0 +1,212 @@
+name: Build AirTap
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+      
+      - name: Generate Gradle Wrapper
+        working-directory: RemoteAccessApp
+        run: gradle wrapper
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x RemoteAccessApp/gradlew
+      
+      - name: Build Debug APK
+        working-directory: RemoteAccessApp
+        run: ./gradlew assembleDebug
+      
+      - name: Build Release APK
+        working-directory: RemoteAccessApp
+        run: ./gradlew assembleRelease
+      
+      - name: Rename APK files
+        run: |
+          mkdir -p output
+          cp RemoteAccessApp/app/build/outputs/apk/debug/app-debug.apk output/AirTap-Debug.apk
+          if [ -f "RemoteAccessApp/app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
+            cp RemoteAccessApp/app/build/outputs/apk/release/app-release-unsigned.apk output/AirTap-Release.apk
+          elif [ -f "RemoteAccessApp/app/build/outputs/apk/release/app-release.apk" ]; then
+            cp RemoteAccessApp/app/build/outputs/apk/release/app-release.apk output/AirTap-Release.apk
+          fi
+      
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AirTap-Android-Debug
+          path: output/AirTap-Debug.apk
+      
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AirTap-Android-Release
+          path: output/AirTap-Release.apk
+
+  build-desktop-windows:
+    name: Build Desktop EXE (Windows)
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+      
+      - name: Generate Gradle Wrapper
+        working-directory: AirTapDesktop
+        run: gradle wrapper
+      
+      - name: Build Windows EXE
+        working-directory: AirTapDesktop
+        run: ./gradlew packageExe
+      
+      - name: Rename EXE file
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path output
+          $exe = Get-ChildItem -Path "AirTapDesktop/build/compose/binaries/main/exe/*.exe" | Select-Object -First 1
+          Copy-Item $exe.FullName -Destination "output/AirTap-Desktop-Setup.exe"
+      
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: AirTap-Desktop-Windows
+          path: output/AirTap-Desktop-Setup.exe
+
+  build-desktop-macos:
+    name: Build Desktop DMG (macOS)
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+      
+      - name: Generate Gradle Wrapper
+        working-directory: AirTapDesktop
+        run: gradle wrapper
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x AirTapDesktop/gradlew
+      
+      - name: Build macOS DMG
+        working-directory: AirTapDesktop
+        run: ./gradlew packageDmg
+      
+      - name: Rename DMG file
+        run: |
+          mkdir -p output
+          cp AirTapDesktop/build/compose/binaries/main/dmg/*.dmg output/AirTap-Desktop-macOS.dmg
+      
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: AirTap-Desktop-macOS
+          path: output/AirTap-Desktop-macOS.dmg
+
+  build-desktop-linux:
+    name: Build Desktop DEB (Linux)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+      
+      - name: Generate Gradle Wrapper
+        working-directory: AirTapDesktop
+        run: gradle wrapper
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x AirTapDesktop/gradlew
+      
+      - name: Build Linux DEB
+        working-directory: AirTapDesktop
+        run: ./gradlew packageDeb
+      
+      - name: Rename DEB file
+        run: |
+          mkdir -p output
+          cp AirTapDesktop/build/compose/binaries/main/deb/*.deb output/AirTap-Desktop-Linux.deb
+      
+      - name: Upload Linux DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: AirTap-Desktop-Linux
+          path: output/AirTap-Desktop-Linux.deb
+
+  release:
+    name: Create Release
+    needs: [build-android, build-desktop-windows, build-desktop-macos, build-desktop-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Display structure
+        run: ls -R artifacts
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: AirTap ${{ github.ref_name }}
+          files: |
+            artifacts/AirTap-Android-Debug/AirTap-Debug.apk
+            artifacts/AirTap-Android-Release/AirTap-Release.apk
+            artifacts/AirTap-Desktop-Windows/AirTap-Desktop-Setup.exe
+            artifacts/AirTap-Desktop-macOS/AirTap-Desktop-macOS.dmg
+            artifacts/AirTap-Desktop-Linux/AirTap-Desktop-Linux.deb
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
