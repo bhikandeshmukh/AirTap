@@ -31,10 +31,11 @@ import java.time.Duration
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Singleton
 class WebServer @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     private val fileRepository: FileRepository,
     private val smsRepository: SmsRepository,
     private val authManager: AuthManager
