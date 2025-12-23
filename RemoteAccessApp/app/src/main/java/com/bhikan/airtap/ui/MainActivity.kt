@@ -1,22 +1,19 @@
 package com.bhikan.airtap.ui
 
-import android.Manifest
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.os.IBinder
-import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.NavHost
@@ -58,19 +55,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted) {
-            checkManageStoragePermission()
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        requestPermissions()
 
         setContent {
             AirTapTheme {
@@ -79,11 +65,9 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    val bound by serviceBound
                     val isLoggedIn by userRepository.isLoggedIn.collectAsState()
                     val currentUser by userRepository.currentUser.collectAsState()
 
-                    // Determine start destination based on login state
                     val startDestination = if (isLoggedIn) Screen.Main.route else Screen.Setup.route
 
                     NavHost(
@@ -94,7 +78,6 @@ class MainActivity : ComponentActivity() {
                             SetupScreen(
                                 onSetupComplete = { email, deviceName ->
                                     val user = userRepository.register(email, deviceName)
-                                    // Store email in AuthManager for verification
                                     authManager.userEmail = user.email
                                     navController.navigate(Screen.Main.route) {
                                         popUpTo(Screen.Setup.route) { inclusive = true }
@@ -147,55 +130,6 @@ class MainActivity : ComponentActivity() {
         if (serviceBound.value) {
             unbindService(serviceConnection)
             serviceBound.value = false
-        }
-    }
-
-    private fun requestPermissions() {
-        val permissions = mutableListOf<String>()
-
-        // Storage permissions
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-            permissions.add(Manifest.permission.READ_MEDIA_IMAGES)
-            permissions.add(Manifest.permission.READ_MEDIA_VIDEO)
-            permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
-        } else {
-            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-                permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
-        }
-
-        // SMS permissions
-        permissions.add(Manifest.permission.READ_SMS)
-        permissions.add(Manifest.permission.SEND_SMS)
-        permissions.add(Manifest.permission.RECEIVE_SMS)
-        permissions.add(Manifest.permission.READ_CONTACTS)
-
-        permissionLauncher.launch(permissions.toTypedArray())
-    }
-
-    private fun checkManageStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-                startActivity(intent)
-            }
-        }
-        // Prompt for notification access
-        checkNotificationAccess()
-    }
-
-    private fun checkNotificationAccess() {
-        val enabledListeners = Settings.Secure.getString(
-            contentResolver,
-            "enabled_notification_listeners"
-        )
-        if (enabledListeners == null || !enabledListeners.contains(packageName)) {
-            // Show dialog to enable notification access
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
     }
 

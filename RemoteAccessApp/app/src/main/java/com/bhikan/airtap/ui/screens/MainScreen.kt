@@ -1,10 +1,12 @@
 package com.bhikan.airtap.ui.screens
 
-import android.content.ClipData
-import android.content.ClipboardManager
+import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,14 +24,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.bhikan.airtap.R
 import com.bhikan.airtap.server.WebServerService
 import com.bhikan.airtap.service.ScreenCaptureService
-import com.bhikan.airtap.ui.ScreenCaptureActivity
 import com.bhikan.airtap.util.QRCodeGenerator
+import com.bhikan.airtap.util.copyToClipboard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,14 +49,28 @@ fun MainScreen(
     val context = LocalContext.current
     var showQRDialog by remember { mutableStateOf(false) }
     val isScreenMirroring by ScreenCaptureService.isStreaming.collectAsState()
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    var requiredPermission by remember { mutableStateOf("") }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions.values.all { it }) {
+            onStartServer()
+        } else {
+            // Show a rationale if any permission is denied
+            requiredPermission = permissions.filterValues { !it }.keys.first()
+            showPermissionDialog = true
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("AirTap") },
+                title = { Text(stringResource(id = R.string.app_name)) },
                 actions = {
                     IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(id = R.string.settings))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -89,7 +108,7 @@ fun MainScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = "Registered Email",
+                                text = stringResource(id = R.string.registered_email),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
                             )
@@ -144,7 +163,7 @@ fun MainScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = if (serverState.isRunning) "Server Running" else "Server Stopped",
+                        text = if (serverState.isRunning) stringResource(id = R.string.server_running) else stringResource(id = R.string.server_stopped),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -153,7 +172,7 @@ fun MainScreen(
                         Spacer(modifier = Modifier.height(24.dp))
 
                         Text(
-                            text = "Connect from browser:",
+                            text = stringResource(id = R.string.connect_from_browser),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -179,11 +198,11 @@ fun MainScreen(
                                 )
 
                                 IconButton(onClick = { showQRDialog = true }) {
-                                    Icon(Icons.Default.QrCode, contentDescription = "Show QR")
+                                    Icon(Icons.Default.QrCode, contentDescription = stringResource(id = R.string.show_qr))
                                 }
 
                                 IconButton(onClick = { copyToClipboard(context, url) }) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy URL")
+                                    Icon(Icons.Default.ContentCopy, contentDescription = stringResource(id = R.string.copy_url))
                                 }
                             }
                         }
@@ -196,7 +215,17 @@ fun MainScreen(
             // Start/Stop Button
             Button(
                 onClick = {
-                    if (serverState.isRunning) onStopServer() else onStartServer()
+                    if (serverState.isRunning) {
+                        onStopServer()
+                    } else {
+                        // Check for permissions before starting the server
+                        val permissions = getRequiredPermissions()
+                        if (permissions.all { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }) {
+                            onStartServer()
+                        } else {
+                            permissionLauncher.launch(permissions.toTypedArray())
+                        }
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -218,7 +247,7 @@ fun MainScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (serverState.isRunning) "Stop Server" else "Start Server",
+                    text = if (serverState.isRunning) stringResource(id = R.string.stop_server) else stringResource(id = R.string.start_server),
                     fontSize = 18.sp
                 )
             }
@@ -257,7 +286,7 @@ fun MainScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isScreenMirroring) "Stop Screen Mirror" else "Start Screen Mirror",
+                    text = if (isScreenMirroring) stringResource(id = R.string.stop_screen_mirror) else stringResource(id = R.string.start_screen_mirror),
                     fontSize = 16.sp
                 )
             }
@@ -271,16 +300,16 @@ fun MainScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "📋 How to Connect",
+                        text = stringResource(id = R.string.how_to_connect),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    InstructionItem("1", "Start the server using the button above")
-                    InstructionItem("2", "Connect your computer to the same WiFi")
-                    InstructionItem("3", "Open AirTap Desktop and enter same email")
+                    InstructionItem("1", stringResource(id = R.string.instruction_1))
+                    InstructionItem("2", stringResource(id = R.string.instruction_2))
+                    InstructionItem("3", stringResource(id = R.string.instruction_3))
                 }
             }
 
@@ -303,14 +332,14 @@ fun MainScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "🌐 Remote Access",
+                            text = stringResource(id = R.string.remote_access),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Access from anywhere using Cloudflare Tunnel or ngrok. Check Settings for setup guide.",
+                        text = stringResource(id = R.string.remote_access_info),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
@@ -324,6 +353,14 @@ fun MainScreen(
         QRCodeDialog(
             url = "http://${serverState.localIp}:${serverState.port}",
             onDismiss = { showQRDialog = false }
+        )
+    }
+
+    if (showPermissionDialog) {
+        PermissionRequestDialog(
+            permission = requiredPermission,
+            onDismiss = { showPermissionDialog = false },
+            onConfirm = { showPermissionDialog = false }
         )
     }
 }
@@ -340,7 +377,7 @@ private fun QRCodeDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("Scan to Connect", fontWeight = FontWeight.Bold)
+            Text(stringResource(id = R.string.scan_to_connect), fontWeight = FontWeight.Bold)
         },
         text = {
             Column(
@@ -350,7 +387,7 @@ private fun QRCodeDialog(
                 qrBitmap?.let { bitmap ->
                     Image(
                         bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "QR Code",
+                        contentDescription = stringResource(id = R.string.qr_code),
                         modifier = Modifier
                             .size(250.dp)
                             .clip(RoundedCornerShape(8.dp))
@@ -366,7 +403,7 @@ private fun QRCodeDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(stringResource(id = R.string.close))
             }
         }
     )
@@ -403,8 +440,26 @@ private fun InstructionItem(number: String, text: String) {
     }
 }
 
-private fun copyToClipboard(context: Context, text: String) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val clip = ClipData.newPlainText("AirTap", text)
-    clipboard.setPrimaryClip(clip)
+private fun getRequiredPermissions(): List<String> {
+    val permissions = mutableListOf<String>()
+
+    // Storage permissions
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        permissions.add(Manifest.permission.READ_MEDIA_IMAGES)
+        permissions.add(Manifest.permission.READ_MEDIA_VIDEO)
+        permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
+    } else {
+        permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+    }
+
+    // SMS permissions
+    permissions.add(Manifest.permission.READ_SMS)
+    permissions.add(Manifest.permission.SEND_SMS)
+    permissions.add(Manifest.permission.RECEIVE_SMS)
+    permissions.add(Manifest.permission.READ_CONTACTS)
+
+    return permissions
 }
