@@ -11,10 +11,15 @@ import com.bhikan.airtap.R
 import com.bhikan.airtap.AirTapApp
 import com.bhikan.airtap.data.repository.UserRepository
 import com.bhikan.airtap.server.auth.AuthManager
+import com.bhikan.airtap.server.relay.RelayClient
 import com.bhikan.airtap.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -30,6 +35,8 @@ class WebServerService : Service() {
     lateinit var userRepository: UserRepository
 
     private val binder = LocalBinder()
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var relayClient: RelayClient? = null
 
     private val _serverState = MutableStateFlow(ServerState())
     val serverState: StateFlow<ServerState> = _serverState
@@ -37,7 +44,8 @@ class WebServerService : Service() {
     data class ServerState(
         val isRunning: Boolean = false,
         val port: Int = 8080,
-        val localIp: String = ""
+        val localIp: String = "",
+        val relayConnected: Boolean = false
     )
 
     inner class LocalBinder : Binder() {
@@ -75,12 +83,37 @@ class WebServerService : Service() {
         // Update Firestore - device is online
         userRepository.updateDeviceStatus(true, localIp, port)
 
+        // Start relay client for remote access
+        startRelayClient(localIp, port)
+
         startForeground(NOTIFICATION_ID, createNotification(localIp, port))
+    }
+
+    private fun startRelayClient(localIp: String, port: Int) {
+        val email = authManager.userEmail ?: return
+        val relayUrl = RELAY_SERVER_URL
+
+        relayClient = RelayClient(
+            context = this,
+            serverUrl = relayUrl,
+            email = email,
+            localServerPort = port
+        )
+
+        serviceScope.launch {
+            val registered = relayClient?.register(localIp, port) ?: false
+            if (registered) {
+                relayClient?.startPolling()
+                _serverState.value = _serverState.value.copy(relayConnected = true)
+            }
+        }
     }
 
     private fun stopServer() {
         webServer.stop()
-        _serverState.value = _serverState.value.copy(isRunning = false)
+        relayClient?.stopPolling()
+        relayClient = null
+        _serverState.value = _serverState.value.copy(isRunning = false, relayConnected = false)
         
         // Update Firestore - device is offline
         userRepository.updateDeviceStatus(false, "", 0)
@@ -142,5 +175,8 @@ class WebServerService : Service() {
         const val ACTION_START = "com.bhikan.airtap.START_SERVER"
         const val ACTION_STOP = "com.bhikan.airtap.STOP_SERVER"
         const val NOTIFICATION_ID = 1001
+        
+        // TODO: Update this after deploying to Vercel
+        const val RELAY_SERVER_URL = com.bhikan.airtap.Config.RELAY_SERVER_URL
     }
 }

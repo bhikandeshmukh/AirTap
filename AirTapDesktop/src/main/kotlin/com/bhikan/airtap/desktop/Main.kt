@@ -64,6 +64,19 @@ fun App() {
                             }
                         }
                     },
+                    onConnectViaRelay = { deviceId, email, onResult ->
+                        currentEmail = email
+                        client.connectViaRelay(deviceId, email) { result ->
+                            result.onSuccess {
+                                token = it
+                                currentScreen = Screen.DASHBOARD
+                                onResult(Result.success(Unit))
+                            }
+                            result.onFailure {
+                                onResult(Result.failure(it))
+                            }
+                        }
+                    },
                     onShowDeviceList = {
                         currentScreen = Screen.DEVICE_LIST
                     }

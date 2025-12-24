@@ -24,26 +24,65 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-@Composable
 fun DeviceListScreen(
     onDeviceSelect: (ip: String, port: Int) -> Unit,
     onBack: () -> Unit,
-    connectionError: String? = null // New parameter
+    connectionError: String? = null
 ) {
     var devices by remember { mutableStateOf<List<FirestoreClient.DeviceInfo>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    
-    // ... (rest of View and Logic)
 
-    // Show connectionError if provided (override list error or show as snackbar/banner)
-    // For simplicity, showing as banner at top
-    
+    LaunchedEffect(Unit) {
+        scope.launch {
+            try {
+                devices = FirestoreClient.getAllDevices()
+                error = null
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-        // ... (Header)
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "All Registered Devices",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = {
+                isLoading = true
+                scope.launch {
+                    try {
+                        devices = FirestoreClient.getAllDevices()
+                        error = null
+                    } catch (e: Exception) {
+                        error = e.message
+                    } finally {
+                        isLoading = false
+                    }
+                }
+            }) {
+                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+            }
+        }
 
-        // Error Banner
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Connection Error Banner
         if (connectionError != null) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
@@ -56,9 +95,21 @@ fun DeviceListScreen(
                 }
             }
         }
-        
-        // ... (Rest of content)
-} else if (devices.isEmpty()) {
+
+        // Content
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else if (error != null) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Error, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Error: $error", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        } else if (devices.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.PhoneAndroid, null, modifier = Modifier.size(64.dp))
@@ -96,9 +147,9 @@ private fun DeviceCard(
             .clickable(enabled = device.isOnline) { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (device.isOnline) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
+            containerColor = if (device.isOnline)
+                MaterialTheme.colorScheme.primaryContainer
+            else
                 MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
@@ -113,18 +164,18 @@ private fun DeviceCard(
                     .clip(CircleShape)
                     .background(if (device.isOnline) Color(0xFF4CAF50) else Color(0xFF9E9E9E))
             )
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             // Device icon
             Icon(
                 Icons.Default.PhoneAndroid,
                 contentDescription = null,
                 modifier = Modifier.size(40.dp)
             )
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             // Device info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -143,7 +194,7 @@ private fun DeviceCard(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
             }
-            
+
             // Connection info
             Column(horizontalAlignment = Alignment.End) {
                 if (device.isOnline) {
@@ -170,7 +221,7 @@ private fun DeviceCard(
                     )
                 }
             }
-            
+
             if (device.isOnline) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(

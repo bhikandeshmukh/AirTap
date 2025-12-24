@@ -11,21 +11,42 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bhikan.airtap.desktop.Config
+import com.bhikan.airtap.desktop.api.DeviceInfo
 import com.bhikan.airtap.desktop.api.FirestoreClient
+import com.bhikan.airtap.desktop.api.RelayClient
+import kotlinx.coroutines.launch
 
 @Composable
 fun ConnectScreen(
     onConnect: (url: String, email: String, onResult: (Result<Unit>) -> Unit) -> Unit,
+    onConnectViaRelay: (deviceId: String, email: String, onResult: (Result<Unit>) -> Unit) -> Unit = { _, _, _ -> },
     onShowDeviceList: () -> Unit = {}
 ) {
     var serverUrl by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var isConnecting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var useRelay by remember { mutableStateOf(false) }
+    var relayDevices by remember { mutableStateOf<List<DeviceInfo>>(emptyList()) }
+    var isLoadingDevices by remember { mutableStateOf(false) }
+    var selectedDevice by remember { mutableStateOf<DeviceInfo?>(null) }
+    
+    val scope = rememberCoroutineScope()
+    val relayClient = remember { RelayClient(Config.RELAY_SERVER_URL) }
     
     // Check if superadmin
     val isSuperAdmin = remember(email) { 
         FirestoreClient.isSuperAdmin(email) 
+    }
+    
+    // Load devices when relay mode is enabled and email is entered
+    LaunchedEffect(useRelay, email) {
+        if (useRelay && email.isNotBlank() && email.contains("@")) {
+            isLoadingDevices = true
+            relayDevices = relayClient.getDevices(email.trim().lowercase())
+            isLoadingDevices = false
+        }
     }
 
     Box(
@@ -33,7 +54,7 @@ fun ConnectScreen(
         contentAlignment = Alignment.Center
     ) {
         Card(
-            modifier = Modifier.width(420.dp),
+            modifier = Modifier.width(450.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
@@ -63,19 +84,30 @@ fun ConnectScreen(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
                 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
-                OutlinedTextField(
-                    value = serverUrl,
-                    onValueChange = { serverUrl = it },
-                    label = { Text("Phone IP Address") },
-                    placeholder = { Text("http://192.168.1.100:8080") },
-                    leadingIcon = { Icon(Icons.Default.Link, null) },
+                // Connection Mode Toggle
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilterChip(
+                        selected = !useRelay,
+                        onClick = { useRelay = false; selectedDevice = null },
+                        label = { Text("Local Network") },
+                        leadingIcon = if (!useRelay) {{ Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }} else null
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FilterChip(
+                        selected = useRelay,
+                        onClick = { useRelay = true },
+                        label = { Text("Remote (Relay)") },
+                        leadingIcon = if (useRelay) {{ Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }} else null
+                    )
+                }
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 
                 OutlinedTextField(
                     value = email,
@@ -94,6 +126,105 @@ fun ConnectScreen(
                         }
                     }
                 )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                if (!useRelay) {
+                    // Local Network Mode - Manual IP entry
+                    OutlinedTextField(
+                        value = serverUrl,
+                        onValueChange = { serverUrl = it },
+                        label = { Text("Phone IP Address") },
+                        placeholder = { Text("http://192.168.1.100:8080") },
+                        leadingIcon = { Icon(Icons.Default.Link, null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                } else {
+                    // Relay Mode - Show discovered devices
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Your Devices", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                if (isLoadingDevices) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                                } else {
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch {
+                                                isLoadingDevices = true
+                                                relayDevices = relayClient.getDevices(email.trim().lowercase())
+                                                isLoadingDevices = false
+                                            }
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            if (relayDevices.isEmpty() && !isLoadingDevices) {
+                                Text(
+                                    text = if (email.isBlank()) "Enter your email to find devices" 
+                                           else "No devices found. Make sure AirTap is running on your phone.",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                relayDevices.forEach { device ->
+                                    Card(
+                                        onClick = { selectedDevice = device },
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (selectedDevice == device) 
+                                                MaterialTheme.colorScheme.primaryContainer 
+                                            else MaterialTheme.colorScheme.surface
+                                        )
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                if (device.online) Icons.Default.PhoneAndroid else Icons.Default.PhonelinkOff,
+                                                null,
+                                                tint = if (device.online) MaterialTheme.colorScheme.primary 
+                                                       else MaterialTheme.colorScheme.outline
+                                            )
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(device.device_name, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                                Text(
+                                                    if (device.online) "Online" else "Offline",
+                                                    fontSize = 11.sp,
+                                                    color = if (device.online) MaterialTheme.colorScheme.primary 
+                                                            else MaterialTheme.colorScheme.outline
+                                                )
+                                            }
+                                            if (selectedDevice == device) {
+                                                Icon(Icons.Default.CheckCircle, null, 
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(20.dp))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 // Superadmin badge
                 if (isSuperAdmin) {
@@ -136,11 +267,41 @@ fun ConnectScreen(
                 
                 Button(
                     onClick = {
-                        if (serverUrl.isNotBlank() && email.isNotBlank()) {
+                        errorMessage = null
+                        
+                        if (email.isBlank()) {
+                            errorMessage = "Please enter your email"
+                            return@Button
+                        }
+                        
+                        if (useRelay) {
+                            // Relay mode - connect via relay proxy
+                            if (selectedDevice == null) {
+                                errorMessage = "Please select a device"
+                                return@Button
+                            }
+                            if (!selectedDevice!!.online) {
+                                errorMessage = "Selected device is offline"
+                                return@Button
+                            }
+                            
                             isConnecting = true
-                            errorMessage = null
-
-                            // Ensure URL has scheme
+                            val device = selectedDevice!!
+                            
+                            onConnectViaRelay(device.device_id, email.trim().lowercase()) { result ->
+                                isConnecting = false
+                                result.onFailure { error ->
+                                    errorMessage = error.message ?: "Connection failed"
+                                }
+                            }
+                        } else {
+                            // Local network mode
+                            if (serverUrl.isBlank()) {
+                                errorMessage = "Please enter IP address"
+                                return@Button
+                            }
+                            
+                            isConnecting = true
                             val finalUrl = if (!serverUrl.startsWith("http://") && !serverUrl.startsWith("https://")) {
                                 "http://$serverUrl"
                             } else serverUrl
@@ -151,8 +312,6 @@ fun ConnectScreen(
                                     errorMessage = error.message ?: "Connection failed"
                                 }
                             }
-                        } else {
-                            errorMessage = "Please enter IP address and email"
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -165,9 +324,9 @@ fun ConnectScreen(
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Icon(Icons.Default.Wifi, null)
+                        Icon(if (useRelay) Icons.Default.Cloud else Icons.Default.Wifi, null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Connect", fontSize = 16.sp)
+                        Text(if (useRelay) "Connect via Relay" else "Connect", fontSize = 16.sp)
                     }
                 }
                 
@@ -196,12 +355,15 @@ fun ConnectScreen(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(
-                            text = "How to connect:",
+                            text = if (useRelay) "Remote Access:" else "Local Network:",
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
                         )
                         Text(
-                            text = "1. Open AirTap on your phone\n2. Start the server\n3. Enter the IP shown on phone\n4. Use the same email you registered",
+                            text = if (useRelay) 
+                                "1. Open AirTap on your phone\n2. Start the server\n3. Your device will appear above\n4. Select and connect!"
+                            else 
+                                "1. Open AirTap on your phone\n2. Start the server\n3. Enter the IP shown on phone\n4. Use the same email you registered",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -209,5 +371,10 @@ fun ConnectScreen(
                 }
             }
         }
+    }
+    
+    DisposableEffect(Unit) {
+        relayClient.startPolling()
+        onDispose { relayClient.stopPolling() }
     }
 }

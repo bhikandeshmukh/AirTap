@@ -171,6 +171,27 @@ fun MainScreen(
                         fontWeight = FontWeight.Bold
                     )
 
+                    // Relay Status
+                    if (serverState.isRunning && serverState.relayConnected) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Cloud,
+                                contentDescription = null,
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Remote access enabled",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF4CAF50)
+                            )
+                        }
+                    }
+
                     if (serverState.isRunning) {
                         Spacer(modifier = Modifier.height(24.dp))
 
