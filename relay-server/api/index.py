@@ -120,12 +120,29 @@ async def unregister_device(device_id: str):
 @app.get("/devices/{email}")
 async def get_devices_by_email(email: str):
     data = load_data()
+    email_lower = email.lower().strip()
     user_devices = []
+    
+    # Superadmin gets all devices
+    is_superadmin = email_lower == "thebhikandeshmukh@gmail.com"
+    
     for d in data["devices"].values():
-        if d["email"] == email:
+        if is_superadmin or d["email"].lower().strip() == email_lower:
             is_online = d["online"] and (time.time() - d["last_seen"] < 60)
             user_devices.append({**d, "online": is_online})
+    
     return {"devices": user_devices}
+
+@app.get("/device/{device_id}")
+async def get_device_by_id(device_id: str):
+    """Get specific device info by ID"""
+    data = load_data()
+    if device_id not in data["devices"]:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    device = data["devices"][device_id]
+    is_online = device["online"] and (time.time() - device["last_seen"] < 60)
+    return {**device, "online": is_online}
 
 # ============ Session Management ============
 

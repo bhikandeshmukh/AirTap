@@ -27,8 +27,9 @@ object AppModule {
     @Provides
     @Singleton
     fun provideAuthManager(
-        @ApplicationContext context: Context
-    ): AuthManager = AuthManager(context)
+        @ApplicationContext context: Context,
+        deviceRepository: DeviceRepository
+    ): AuthManager = AuthManager(context, deviceRepository)
 
     @Provides
     @Singleton

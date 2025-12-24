@@ -2,13 +2,16 @@ package com.bhikan.airtap.server.auth
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.bhikan.airtap.data.repository.DeviceRepository
+import kotlinx.coroutines.runBlocking
 import java.security.SecureRandom
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AuthManager @Inject constructor(
-    private val context: Context
+    private val context: Context,
+    private val deviceRepository: DeviceRepository
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
     private val activeSessions = mutableMapOf<String, SessionInfo>()
@@ -40,18 +43,28 @@ class AuthManager @Inject constructor(
         get() = prefs.getString(KEY_DEVICE_ID, null)
         set(value) = prefs.edit().putString(KEY_DEVICE_ID, value).apply()
 
-    // Validate email match OR superadmin
+    // Validate email - check Firestore for device registration
     fun validateEmail(email: String): Boolean {
         val inputEmail = email.lowercase().trim()
         
         // Superadmin can access any device
-        if (inputEmail == com.bhikan.airtap.BuildConfig.SUPERADMIN_EMAIL.lowercase()) {
+        if (isSuperAdmin(inputEmail)) {
             return true
         }
         
-        // Normal user - check if email matches
-        val storedEmail = userEmail ?: return false
-        return inputEmail == storedEmail.lowercase().trim()
+        // Check if this device is registered with this email in Firestore
+        val currentDeviceId = deviceId ?: return false
+        
+        return runBlocking {
+            try {
+                val device = deviceRepository.getDevice(currentDeviceId)
+                device != null && device.email.lowercase().trim() == inputEmail
+            } catch (e: Exception) {
+                // Fallback to local check
+                val storedEmail = userEmail
+                storedEmail != null && inputEmail == storedEmail.lowercase().trim()
+            }
+        }
     }
     
     // Check if email is superadmin
