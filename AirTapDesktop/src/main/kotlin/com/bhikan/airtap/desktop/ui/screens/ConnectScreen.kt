@@ -17,6 +17,7 @@ import com.bhikan.airtap.desktop.api.FirestoreClient
 import com.bhikan.airtap.desktop.api.RelayClient
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectScreen(
     onConnect: (url: String, email: String, onResult: (Result<Unit>) -> Unit) -> Unit,
