@@ -121,12 +121,22 @@ class RelayClient(
             conn.connectTimeout = 30000
             conn.readTimeout = 30000
 
-            // Copy headers (skip host)
+            // Copy headers (skip host, set content-type properly)
+            var contentTypeSet = false
             req.headers.forEach { (key, value) ->
                 if (!key.equals("host", ignoreCase = true) &&
-                    !key.equals("content-length", ignoreCase = true)) {
+                    !key.equals("content-length", ignoreCase = true) &&
+                    !key.equals("transfer-encoding", ignoreCase = true)) {
                     conn.setRequestProperty(key, value)
+                    if (key.equals("content-type", ignoreCase = true)) {
+                        contentTypeSet = true
+                    }
                 }
+            }
+            
+            // Ensure content-type is set for POST requests
+            if (!contentTypeSet && req.method == "POST" && req.body != null) {
+                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
             }
 
             // Send body if present
